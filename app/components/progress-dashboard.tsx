@@ -50,10 +50,11 @@ export function ProgressDashboard({ gameData, userStats }: ProgressDashboardProp
       <h2 className="text-xl font-bold">Progress Dashboard</h2>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="domains">Domains</TabsTrigger>
+          <TabsTrigger value="games">Game Stats</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -276,6 +277,74 @@ export function ProgressDashboard({ gameData, userStats }: ProgressDashboardProp
               </Card>
             ))}
           </div>
+        </TabsContent>
+        <TabsContent value="games" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Memory Matrix Performance</CardTitle>
+              <CardDescription>Your level progression over time.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {gameData.memory?.history && gameData.memory.history.length > 1 ? (
+                <>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                    <div>
+                      <p className="font-bold text-xl">{gameData.memory.bestLevel || 0}</p>
+                      <p className="text-xs text-gray-500">Highest Level</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl">{gameData.memory.bestScore || 0}</p>
+                      <p className="text-xs text-gray-500">Best Score</p>
+                    </div>
+                    <div>
+                      <p className="font-bold text-xl">
+                        {Math.round(
+                          gameData.memory.history.reduce((acc, cur) => acc + cur.accuracy, 0) /
+                            gameData.memory.history.length,
+                        ) || 0}
+                        %
+                      </p>
+                      <p className="text-xs text-gray-500">Avg Accuracy</p>
+                    </div>
+                  </div>
+                  <ChartContainer
+                    config={{
+                      level: {
+                        label: "Level",
+                        color: "hsl(var(--chart-1))",
+                      },
+                    }}
+                    className="h-[200px]"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={gameData.memory.history.map((h) => ({
+                          ...h,
+                          date: new Date(h.date).toLocaleDateString(),
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                        <YAxis dataKey="level" />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Line
+                          type="monotone"
+                          dataKey="level"
+                          stroke="var(--color-level)"
+                          strokeWidth={2}
+                          dot={{ fill: "var(--color-level)" }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-8">
+                  Play the Memory Matrix game a few more times to see your progress chart here!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

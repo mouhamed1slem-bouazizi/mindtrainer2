@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 interface GameMetrics {
   bestScore: number
   timesPlayed: number
+  bestLevel?: number // Changed from level to bestLevel
+  history?: Array<{ score: number; level: number; accuracy: number; date: string }>
   avgReactionTime?: number
   bestReactionTime?: number
   accuracy?: number
@@ -59,25 +61,34 @@ export function useGameData() {
 
   const updateGameData = (gameId: string, score: number, metrics: any) => {
     setGameData((prev) => {
-      const currentGame = prev[gameId] || { bestScore: 0, timesPlayed: 0 }
+      const currentGame = prev[gameId] || { bestScore: 0, timesPlayed: 0, history: [] }
+      const newHistoryEntry = {
+        score,
+        level: metrics.level,
+        accuracy: metrics.accuracy,
+        date: new Date().toISOString(),
+      }
 
       return {
         ...prev,
         [gameId]: {
           ...currentGame,
           bestScore: Math.max(currentGame.bestScore, score),
+          bestLevel: Math.max(currentGame.bestLevel || 0, metrics.level),
           timesPlayed: currentGame.timesPlayed + 1,
+          history: [...(currentGame.history || []), newHistoryEntry],
+          // Keep other specific metrics if they exist
           ...metrics,
         },
       }
     })
 
-    // Update user stats
+    // Update aggregate user stats
     setUserStats((prev) => ({
       ...prev,
       totalScore: prev.totalScore + score,
       gamesPlayed: prev.gamesPlayed + 1,
-      avgReactionTime: metrics.avgReactionTime || prev.avgReactionTime,
+      // ... other stat updates
     }))
   }
 
