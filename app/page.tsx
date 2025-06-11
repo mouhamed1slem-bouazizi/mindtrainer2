@@ -50,7 +50,7 @@ export default function MindTrainer() {
 
   // Redirect to the landing page if user is not authenticated
   if (!user) {
-    redirect("/(landing)")
+    redirect("/landing")
   }
 
   return (
