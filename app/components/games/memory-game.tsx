@@ -4,12 +4,15 @@ import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, Brain, Heart, CheckCircle } from "lucide-react"
+import { ArrowLeft, Brain, Heart, CheckCircle, Clock } from "lucide-react"
 
 interface GameSpecificData {
   bestScore?: number
   bestLevel?: number
   timesPlayed?: number
+  levelTimes?: Array<{ level: number; time: number; date: string }>
+  averageTimePerLevel?: number
+  fastestLevel?: { level: number; time: number }
 }
 
 interface MemoryGameProps {
@@ -40,28 +43,42 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
   const [highlightedCell, setHighlightedCell] = useState<number | null>(null)
   const [gameCompleted, setGameCompleted] = useState(false)
 
+  // Timing tracking
+  const [levelStartTime, setLevelStartTime] = useState(0)
+  const [currentLevelTime, setCurrentLevelTime] = useState(0)
+  const [levelTimes, setLevelTimes] = useState<Array<{ level: number; time: number; date: string }>>([])
+  const [sessionStartTime, setSessionStartTime] = useState(0)
+
   const [startTime, setStartTime] = useState(0)
   const [reactionTimes, setReactionTimes] = useState<number[]>([])
 
   const gridSize = 4
   const maxLevel = 200
 
-  // This function will be called when the player clicks "Back to Game Library"
-  // after seeing the game over screen
-  const handleGameExit = useCallback(() => {
-    if (gameCompleted) {
-      onBack()
-    } else {
-      onBack()
+  // Timer effect for current level
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (levelStartTime > 0 && (gameState === "showing_animation" || gameState === "input")) {
+      interval = setInterval(() => {
+        setCurrentLevelTime(Date.now() - levelStartTime)
+      }, 100)
     }
-  }, [gameCompleted, onBack])
+    return () => clearInterval(interval)
+  }, [levelStartTime, gameState])
 
-  // This function will be called when the player clicks "Play Again"
+  const formatTime = (milliseconds: number) => {
+    const seconds = Math.floor(milliseconds / 1000)
+    const ms = Math.floor((milliseconds % 1000) / 10)
+    return `${seconds}.${ms.toString().padStart(2, "0")}s`
+  }
+
   const handlePlayAgain = useCallback(() => {
     setCurrentLevel(1)
     setScore(0)
     setLives(3)
     setGameCompleted(false)
+    setLevelTimes([])
+    setSessionStartTime(Date.now())
     startLevel()
   }, [])
 
@@ -91,6 +108,8 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
     setUserInput([])
     setCurrentSequenceDisplayIndex(0)
     setHighlightedCell(null)
+    setLevelStartTime(Date.now())
+    setCurrentLevelTime(0)
     setGameState("showing_animation")
   }, [currentLevel, generateSequence, getSequenceLength])
 
@@ -136,6 +155,15 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
     setUserInput(updatedUserInput)
 
     if (updatedUserInput.length === sequence.length) {
+      // Level completed successfully - record the time
+      const levelCompletionTime = Date.now() - levelStartTime
+      const newLevelTime = {
+        level: currentLevel,
+        time: levelCompletionTime,
+        date: new Date().toISOString(),
+      }
+      setLevelTimes((prev) => [...prev, newLevelTime])
+
       const newCurrentScore = score + currentLevel * 10
       setScore(newCurrentScore)
 
@@ -145,7 +173,6 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
         setGameOverReason("completed")
         setGameState("result")
         setGameCompleted(true)
-        // We'll call onComplete when the player exits the game over screen
       }
     }
   }
@@ -155,19 +182,35 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
     if (gameState === "mistake") {
       const timer = setTimeout(() => {
         if (lives > 0) {
+          // Record time even for failed attempts
+          const levelCompletionTime = Date.now() - levelStartTime
+          const newLevelTime = {
+            level: currentLevel,
+            time: levelCompletionTime,
+            date: new Date().toISOString(),
+          }
+          setLevelTimes((prev) => [...prev, newLevelTime])
+
           setCurrentLevel((prev) => prev + 1)
           setGameState("advancing")
         } else {
-          // No more lives, game over
+          // Record final level time
+          const levelCompletionTime = Date.now() - levelStartTime
+          const newLevelTime = {
+            level: currentLevel,
+            time: levelCompletionTime,
+            date: new Date().toISOString(),
+          }
+          setLevelTimes((prev) => [...prev, newLevelTime])
+
           setGameOverReason("lives")
           setGameState("result")
           setGameCompleted(true)
-          // We'll call onComplete when the player exits the game over screen
         }
       }, 4000)
       return () => clearTimeout(timer)
     }
-  }, [gameState, lives])
+  }, [gameState, lives, levelStartTime, currentLevel])
 
   // Handle the advancing state
   useEffect(() => {
@@ -186,13 +229,6 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
       return () => clearTimeout(timer)
     }
   }, [gameState])
-
-  // When the game is completed and the player exits, call onComplete
-  useEffect(() => {
-    if (gameCompleted && gameState === "result") {
-      // We don't call onComplete here, we'll call it when the player clicks a button
-    }
-  }, [gameCompleted, gameState, onComplete, score, currentLevel])
 
   if (gameState === "instructions") {
     return (
@@ -213,7 +249,7 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <p className="text-sm">
-                <strong>Goal:</strong> Remember and recreate the sequence of highlighted squares.
+                <strong>Goal:</strong> Remember and recreate the sequence of highlighted squares as quickly as possible.
               </p>
               <p className="text-sm">
                 <strong>Instructions:</strong>
@@ -222,6 +258,7 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
                 <li>• Watch the sequence of squares that light up one by one.</li>
                 <li>• After the sequence ends, tap the squares in the same order.</li>
                 <li>• You have 3 lives. Making a mistake costs one life but lets you advance to the next level.</li>
+                <li>• Your completion time for each level will be tracked and recorded.</li>
                 <li>• The game ends when you run out of lives or complete all levels.</li>
               </ul>
               <p className="text-sm">
@@ -233,6 +270,11 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
                 <p className="text-sm font-medium">Your Best Score: {gameData.bestScore}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Highest Level: {gameData.bestLevel || 0}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Times Played: {gameData.timesPlayed || 0}</p>
+                {gameData.fastestLevel && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Fastest Level: {formatTime(gameData.fastestLevel.time)} (Level {gameData.fastestLevel.level})
+                  </p>
+                )}
               </div>
             )}
             <Button
@@ -240,6 +282,8 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
                 setCurrentLevel(1)
                 setScore(0)
                 setLives(3)
+                setLevelTimes([])
+                setSessionStartTime(Date.now())
                 startLevel()
               }}
               className="w-full"
@@ -253,6 +297,13 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
   }
 
   if (gameState === "result") {
+    const totalSessionTime = levelTimes.reduce((sum, lt) => sum + lt.time, 0)
+    const averageTimePerLevel = levelTimes.length > 0 ? totalSessionTime / levelTimes.length : 0
+    const fastestLevelInSession =
+      levelTimes.length > 0
+        ? levelTimes.reduce((fastest, current) => (current.time < fastest.time ? current : fastest))
+        : null
+
     return (
       <div className="space-y-4 pb-20">
         <div className="flex items-center gap-3">
@@ -260,11 +311,13 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
             variant="ghost"
             size="sm"
             onClick={() => {
-              // When clicking back from the game over screen, we need to call onComplete
-              // to update the game data before going back
               onComplete(score, {
                 level: currentLevel,
                 accuracy: 100,
+                levelTimes: levelTimes,
+                totalSessionTime: totalSessionTime,
+                averageTimePerLevel: averageTimePerLevel,
+                fastestLevel: fastestLevelInSession,
               })
               onBack()
             }}
@@ -281,13 +334,13 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Simple Session Summary */}
+            {/* Session Summary */}
             <div className="text-center">
               <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{score}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Final Score</p>
             </div>
 
-            {/* Basic Session Stats */}
+            {/* Session Stats */}
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-xl font-bold">{currentLevel}</p>
@@ -299,9 +352,33 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
               </div>
             </div>
 
-            {/* Best Score Comparison - Simple Version */}
+            {/* Timing Stats */}
+            {levelTimes.length > 0 && (
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <p className="text-xl font-bold">{formatTime(totalSessionTime)}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Total Time</p>
+                </div>
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <p className="text-xl font-bold">{formatTime(averageTimePerLevel)}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Avg per Level</p>
+                </div>
+              </div>
+            )}
+
+            {/* Fastest Level */}
+            {fastestLevelInSession && (
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+                <p className="text-sm font-medium">Fastest Level: {fastestLevelInSession.level}</p>
+                <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                  {formatTime(fastestLevelInSession.time)}
+                </p>
+              </div>
+            )}
+
+            {/* Best Score Comparison */}
             {gameData && (
-              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-center">
+              <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg text-center">
                 <p className="text-sm font-medium">Your Best Score: {gameData.bestScore || 0}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Best Level: {gameData.bestLevel || 0}</p>
                 {score > (gameData.bestScore || 0) && (
@@ -310,16 +387,10 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
               </div>
             )}
 
-            {/* Action Buttons - Prominent */}
+            {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <Button
                 onClick={() => {
-                  // When clicking Play Again, we need to call onComplete
-                  // to update the game data before restarting
-                  onComplete(score, {
-                    level: currentLevel,
-                    accuracy: 100,
-                  })
                   handlePlayAgain()
                 }}
                 className="w-full bg-green-600 hover:bg-green-700"
@@ -328,11 +399,13 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
               </Button>
               <Button
                 onClick={() => {
-                  // When clicking Back to Game Library, we need to call onComplete
-                  // to update the game data before going back
                   onComplete(score, {
                     level: currentLevel,
                     accuracy: 100,
+                    levelTimes: levelTimes,
+                    totalSessionTime: totalSessionTime,
+                    averageTimePerLevel: averageTimePerLevel,
+                    fastestLevel: fastestLevelInSession,
                   })
                   onBack()
                 }}
@@ -349,17 +422,18 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
   }
 
   if (gameState === "level_complete_feedback") {
+    const levelTime = currentLevelTime
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-50 p-4">
         <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
         <p className="text-2xl font-bold text-green-500">Level Complete!</p>
+        <p className="text-lg font-medium text-blue-600 dark:text-blue-400 mt-2">{formatTime(levelTime)}</p>
         <p className="text-sm text-muted-foreground mt-1">Get ready for Level {currentLevel + 1}...</p>
       </div>
     )
   }
 
   if (gameState === "mistake" && mistakeDetails) {
-    // This screen is shown for 4 seconds before transitioning
     return (
       <div className="space-y-4 pb-20">
         <div className="flex items-center gap-3">
@@ -373,6 +447,9 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
                 ? `You have ${lives} ${lives === 1 ? "life" : "lives"} left. Advancing to next level...`
                 : "No lives left. Game will end."}
             </p>
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-2">
+              Level Time: {formatTime(currentLevelTime)}
+            </p>
           </CardContent>
         </Card>
         <div className="grid grid-cols-4 gap-2 max-w-sm mx-auto">
@@ -384,10 +461,10 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
 
             let cellClass = "bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600"
             if (isCorrectSq && !isUserCorrectTap && !isUserIncorrectTap)
-              cellClass = "bg-blue-200 border-blue-400 dark:bg-blue-900 dark:border-blue-700 opacity-50" // Expected path
-            if (isUserCorrectTap) cellClass = "bg-green-300 border-green-500 dark:bg-green-800 dark:border-green-600" // User's correct part
+              cellClass = "bg-blue-200 border-blue-400 dark:bg-blue-900 dark:border-blue-700 opacity-50"
+            if (isUserCorrectTap) cellClass = "bg-green-300 border-green-500 dark:bg-green-800 dark:border-green-600"
             if (isUserIncorrectTap)
-              cellClass = "bg-red-300 border-red-500 dark:bg-red-800 dark:border-red-600 animate-pulse" // User's incorrect tap
+              cellClass = "bg-red-300 border-red-500 dark:bg-red-800 dark:border-red-600 animate-pulse"
 
             return (
               <div
@@ -447,8 +524,12 @@ export function MemoryGame({ onComplete, onBack, gameData }: MemoryGameProps) {
             ))}
           </div>
         </div>
-        <Progress value={(currentLevel / maxLevel) * 100} className="w-24 h-2" />
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-blue-500" />
+          <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{formatTime(currentLevelTime)}</span>
+        </div>
       </div>
+      <Progress value={(currentLevel / maxLevel) * 100} className="w-full h-2" />
       <Card>
         <CardContent className="p-4 text-center min-h-[60px] flex items-center justify-center">
           {gameState === "showing_animation" && <p className="text-lg font-medium">Watch carefully...</p>}
