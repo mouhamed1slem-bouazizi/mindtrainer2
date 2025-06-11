@@ -2,21 +2,31 @@
 
 import type React from "react"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
+interface ProtectedRouteProps {
+  children: React.ReactNode
+}
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && !loading && !user) {
       router.push("/signin")
     }
-  }, [user, loading, router])
+  }, [user, loading, router, mounted])
 
-  if (loading) {
+  // Show loading during hydration or auth check
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
         <div className="flex flex-col items-center gap-4">
@@ -27,6 +37,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
+  // Don't render if user is not authenticated
   if (!user) {
     return null
   }

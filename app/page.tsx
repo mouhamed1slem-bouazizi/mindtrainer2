@@ -29,6 +29,7 @@ import { useGameData } from "./hooks/use-game-data"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
+import { redirect } from "next/navigation"
 
 export default function MindTrainer() {
   const [activeTab, setActiveTab] = useState("dashboard")
@@ -45,6 +46,11 @@ export default function MindTrainer() {
     } catch (error) {
       console.error("Error logging out:", error)
     }
+  }
+
+  // Redirect to the landing page if user is not authenticated
+  if (!user) {
+    redirect("/(landing)")
   }
 
   return (

@@ -1,27 +1,26 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import {
   type User,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
   sendPasswordResetEmail,
   updateProfile,
 } from "firebase/auth"
-import { auth, db } from "@/lib/firebase"
-import { doc, setDoc } from "firebase/firestore"
+import { auth } from "@/lib/firebase"
 
 interface AuthContextType {
   user: User | null
   loading: boolean
-  signUp: (email: string, password: string, displayName: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
-  logOut: () => Promise<void>
+  signUp: (email: string, password: string, displayName?: string) => Promise<void>
+  logout: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  updateUserProfile: (displayName: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -29,75 +28,95 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user)
-      } else {
-        setUser(null)
-      }
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user)
       setLoading(false)
     })
 
-    return () => unsubscribe()
-  }, [])
+    return unsubscribe
+  }, [mounted])
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-
-      // Update profile with display name
-      await updateProfile(userCredential.user, {
-        displayName: displayName,
-      })
-
-      // Create user document in Firestore
-      await setDoc(doc(db, "users", userCredential.user.uid), {
-        email,
-        displayName,
-        createdAt: new Date().toISOString(),
-        gameData: {
-          memory: { bestScore: 0, timesPlayed: 0, levelTimes: [] },
-          reaction: { bestScore: 0, timesPlayed: 0, bestReactionTime: 999 },
-          attention: { bestScore: 0, timesPlayed: 0, accuracy: 0 },
-        },
-        userStats: {
-          totalScore: 0,
-          avgReactionTime: 0,
-          gamesPlayed: 0,
-          streakDays: 0,
-          totalTime: 0,
-        },
-      })
-
-      return userCredential
+      await signInWithEmailAndPassword(auth, email, password)
     } catch (error) {
-      console.error("Error signing up:", error)
+      console.error("Sign in error:", error)
       throw error
     }
   }
 
-  const signIn = async (email: string, password: string) => {
-    return signInWithEmailAndPassword(auth, email, password)
+  const signUp = async (email: string, password: string, displayName?: string) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password)
+      if (displayName && result.user) {
+        await updateProfile(result.user, { displayName })
+      }
+    } catch (error) {
+      console.error("Sign up error:", error)
+      throw error
+    }
   }
 
-  const logOut = async () => {
-    setUser(null)
-    return signOut(auth)
+  const logout = async () => {
+    try {
+      await signOut(auth)
+    } catch (error) {
+      console.error("Logout error:", error)
+      throw error
+    }
   }
 
   const resetPassword = async (email: string) => {
-    return sendPasswordResetEmail(auth, email)
+    try {
+      await sendPasswordResetEmail(auth, email)
+    } catch (error) {
+      console.error("Password reset error:", error)
+      throw error
+    }
+  }
+
+  const updateUserProfile = async (displayName: string) => {
+    try {
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName })
+        // Trigger a re-render by updating the user state
+        setUser({ ...auth.currentUser })
+      }
+    } catch (error) {
+      console.error("Profile update error:", error)
+      throw error
+    }
+  }
+
+  // Don't render children until mounted to prevent hydration issues
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   const value = {
     user,
     loading,
-    signUp,
     signIn,
-    logOut,
+    signUp,
+    logout,
     resetPassword,
+    updateUserProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
