@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
 interface LevelTime {
   level: number
@@ -47,37 +50,75 @@ export function useGameData() {
   })
 
   const [userStats, setUserStats] = useState<UserStats>({
-    totalScore: 2450,
+    totalScore: 0,
     avgReactionTime: 285,
-    gamesPlayed: 42,
-    streakDays: 7,
-    totalTime: 192, // minutes
+    gamesPlayed: 0,
+    streakDays: 0,
+    totalTime: 0, // minutes
   })
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    const savedGameData = localStorage.getItem("mindtrainer-game-data")
-    const savedUserStats = localStorage.getItem("mindtrainer-user-stats")
+  const { user } = useAuth()
 
-    if (savedGameData) {
-      setGameData(JSON.parse(savedGameData))
+  // Load data from Firestore when user is authenticated
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user) return
+
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        const userDoc = await getDoc(userDocRef)
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+
+          if (userData.gameData) {
+            setGameData(userData.gameData)
+          }
+
+          if (userData.userStats) {
+            setUserStats(userData.userStats)
+          }
+        } else {
+          // Create user document if it doesn't exist
+          await setDoc(userDocRef, {
+            email: user.email,
+            displayName: user.displayName,
+            createdAt: new Date().toISOString(),
+            gameData,
+            userStats,
+          })
+        }
+      } catch (error) {
+        console.error("Error loading user data:", error)
+      }
     }
 
-    if (savedUserStats) {
-      setUserStats(JSON.parse(savedUserStats))
+    loadUserData()
+  }, [user])
+
+  // Save data to Firestore whenever it changes
+  useEffect(() => {
+    const saveUserData = async () => {
+      if (!user) return
+
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        await updateDoc(userDocRef, {
+          gameData,
+          userStats,
+        })
+      } catch (error) {
+        console.error("Error saving user data:", error)
+      }
     }
-  }, [])
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("mindtrainer-game-data", JSON.stringify(gameData))
-  }, [gameData])
+    // Only save if user is authenticated and data has been loaded
+    if (user && (gameData.memory.timesPlayed > 0 || userStats.gamesPlayed > 0)) {
+      saveUserData()
+    }
+  }, [gameData, userStats, user])
 
-  useEffect(() => {
-    localStorage.setItem("mindtrainer-user-stats", JSON.stringify(userStats))
-  }, [userStats])
-
-  const updateGameData = (gameId: string, score: number, metrics: any) => {
+  const updateGameData = async (gameId: string, score: number, metrics: any) => {
     setGameData((prev) => {
       const currentGame = prev[gameId] || { bestScore: 0, timesPlayed: 0, history: [], levelTimes: [] }
       const newHistoryEntry = {

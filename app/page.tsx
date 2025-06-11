@@ -6,134 +6,155 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, Target, Zap, Trophy, Calendar, Settings, Play, TrendingUp, Award, Clock } from "lucide-react"
+import { Brain, Target, Zap, Trophy, Calendar, Settings, Play, TrendingUp, Award, Clock, LogOut } from "lucide-react"
 import { GameLibrary } from "./components/game-library"
 import { ProgressDashboard } from "./components/progress-dashboard"
 import { TrainingPlan } from "./components/training-plan"
 import { AICoach } from "./components/ai-coach"
 import { ProfileSettings } from "./components/profile-settings"
 import { useGameData } from "./hooks/use-game-data"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
+import { ProtectedRoute } from "@/components/protected-route"
 
 export default function MindTrainer() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const { gameData, updateGameData, userStats } = useGameData()
   const [dailyStreak, setDailyStreak] = useState(7)
   const [todayCompleted, setTodayCompleted] = useState(false)
+  const { user, logOut } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await logOut()
+      router.push("/signin")
+    } catch (error) {
+      console.error("Error logging out:", error)
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 shadow-sm border-b">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <Brain className="w-6 h-6 text-white" />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-900 shadow-sm border-b">
+          <div className="max-w-md mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <Brain className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">MindTrainer</h1>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Welcome, {user?.displayName || "Cognitive Athlete"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">MindTrainer</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Cognitive Fitness Coach</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  {dailyStreak} day streak
+                </Badge>
+                <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out">
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Zap className="w-3 h-3" />
-                {dailyStreak} day streak
-              </Badge>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-md mx-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="px-4 py-4">
-            <TabsContent value="dashboard" className="mt-0">
-              <DashboardView
-                userStats={userStats}
-                todayCompleted={todayCompleted}
-                onStartTraining={() => setActiveTab("games")}
-              />
-            </TabsContent>
+        {/* Main Content */}
+        <div className="max-w-md mx-auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="px-4 py-4">
+              <TabsContent value="dashboard" className="mt-0">
+                <DashboardView
+                  userStats={userStats}
+                  todayCompleted={todayCompleted}
+                  onStartTraining={() => setActiveTab("games")}
+                />
+              </TabsContent>
 
-            <TabsContent value="games" className="mt-0">
-              <GameLibrary
-                gameData={gameData}
-                onGameComplete={updateGameData}
-                onBack={() => setActiveTab("dashboard")}
-              />
-            </TabsContent>
+              <TabsContent value="games" className="mt-0">
+                <GameLibrary
+                  gameData={gameData}
+                  onGameComplete={updateGameData}
+                  onBack={() => setActiveTab("dashboard")}
+                />
+              </TabsContent>
 
-            <TabsContent value="progress" className="mt-0">
-              <ProgressDashboard gameData={gameData} userStats={userStats} />
-            </TabsContent>
+              <TabsContent value="progress" className="mt-0">
+                <ProgressDashboard gameData={gameData} userStats={userStats} />
+              </TabsContent>
 
-            <TabsContent value="plan" className="mt-0">
-              <TrainingPlan userStats={userStats} />
-            </TabsContent>
+              <TabsContent value="plan" className="mt-0">
+                <TrainingPlan userStats={userStats} />
+              </TabsContent>
 
-            <TabsContent value="coach" className="mt-0">
-              <AICoach userStats={userStats} gameData={gameData} />
-            </TabsContent>
+              <TabsContent value="coach" className="mt-0">
+                <AICoach userStats={userStats} gameData={gameData} />
+              </TabsContent>
 
-            <TabsContent value="settings" className="mt-0">
-              <ProfileSettings />
-            </TabsContent>
-          </div>
-
-          {/* Bottom Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t">
-            <div className="max-w-md mx-auto">
-              <TabsList className="grid w-full grid-cols-6 h-16 bg-transparent">
-                <TabsTrigger
-                  value="dashboard"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <Target className="w-4 h-4" />
-                  <span className="text-xs">Home</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="games"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <Play className="w-4 h-4" />
-                  <span className="text-xs">Games</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="progress"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="text-xs">Progress</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="plan"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-xs">Plan</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="coach"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <Brain className="w-4 h-4" />
-                  <span className="text-xs">Coach</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="settings"
-                  className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span className="text-xs">Settings</span>
-                </TabsTrigger>
-              </TabsList>
+              <TabsContent value="settings" className="mt-0">
+                <ProfileSettings />
+              </TabsContent>
             </div>
-          </div>
-        </Tabs>
+
+            {/* Bottom Navigation */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t">
+              <div className="max-w-md mx-auto">
+                <TabsList className="grid w-full grid-cols-6 h-16 bg-transparent">
+                  <TabsTrigger
+                    value="dashboard"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <Target className="w-4 h-4" />
+                    <span className="text-xs">Home</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="games"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <Play className="w-4 h-4" />
+                    <span className="text-xs">Games</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="progress"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-xs">Progress</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="plan"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-xs">Plan</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="coach"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span className="text-xs">Coach</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="settings"
+                    className="flex flex-col gap-1 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-900/20"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="text-xs">Settings</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+          </Tabs>
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   )
 }
 
