@@ -63,6 +63,12 @@ export function ReactionGame({ onComplete, onBack, gameData }: ReactionGameProps
             bestReactionTime: bestTime,
             allTimes: newTimes,
             consistency: Math.max(...newTimes) - Math.min(...newTimes),
+            roundsCompleted: totalRounds,
+            reactionTimes: newTimes,
+            date: new Date().toISOString(),
+            gameCompletionTime: Date.now() - startTime, // Total game time
+            accuracyRate: 100, // Lightning reflexes has 100% accuracy since you can't click wrong
+            levelReached: totalRounds,
           })
         }
       }, 1500)

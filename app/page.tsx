@@ -6,7 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, Target, Zap, Trophy, Calendar, Settings, Play, TrendingUp, Award, Clock, LogOut } from "lucide-react"
+import {
+  Brain,
+  Target,
+  Zap,
+  Trophy,
+  Calendar,
+  Settings,
+  Play,
+  TrendingUp,
+  Award,
+  Clock,
+  LogOut,
+  User,
+} from "lucide-react"
 import { GameLibrary } from "./components/game-library"
 import { ProgressDashboard } from "./components/progress-dashboard"
 import { TrainingPlan } from "./components/training-plan"
@@ -19,7 +32,7 @@ import { ProtectedRoute } from "@/components/protected-route"
 
 export default function MindTrainer() {
   const [activeTab, setActiveTab] = useState("dashboard")
-  const { gameData, updateGameData, userStats } = useGameData()
+  const { gameData, updateGameData, userStats, isLoading } = useGameData()
   const [dailyStreak, setDailyStreak] = useState(7)
   const [todayCompleted, setTodayCompleted] = useState(false)
   const { user, logOut } = useAuth()
@@ -57,6 +70,9 @@ export default function MindTrainer() {
                   <Zap className="w-3 h-3" />
                   {dailyStreak} day streak
                 </Badge>
+                <Button variant="ghost" size="icon" onClick={() => router.push("/profile")} title="Profile">
+                  <User className="h-4 w-4" />
+                </Button>
                 <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out">
                   <LogOut className="h-4 w-4" />
                 </Button>
@@ -86,7 +102,7 @@ export default function MindTrainer() {
               </TabsContent>
 
               <TabsContent value="progress" className="mt-0">
-                <ProgressDashboard gameData={gameData} userStats={userStats} />
+                <ProgressDashboard gameData={gameData} userStats={userStats} isLoading={isLoading} />
               </TabsContent>
 
               <TabsContent value="plan" className="mt-0">

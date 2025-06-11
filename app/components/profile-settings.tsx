@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
-import { User, Bell, Moon, Volume2, Share2, Download, Trash2 } from "lucide-react"
+import { Bell, Moon, Volume2, Share2, Download, Trash2 } from "lucide-react"
+import { ProfileInfo } from "./profile-info"
 
 export function ProfileSettings() {
   const [notifications, setNotifications] = useState(true)
@@ -20,39 +20,7 @@ export function ProfileSettings() {
       <h2 className="text-xl font-bold">Settings</h2>
 
       {/* Profile Card */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <CardTitle>Cognitive Athlete</CardTitle>
-              <CardDescription>Training since January 2024</CardDescription>
-              <div className="flex gap-2 mt-2">
-                <Badge>7-day streak</Badge>
-                <Badge variant="secondary">Level 12</Badge>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold">2,450</p>
-              <p className="text-sm text-gray-500">Total Score</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">42</p>
-              <p className="text-sm text-gray-500">Sessions</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">3.2h</p>
-              <p className="text-sm text-gray-500">Total Time</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileInfo showDetailedStats={true} />
 
       {/* Training Settings */}
       <Card>
