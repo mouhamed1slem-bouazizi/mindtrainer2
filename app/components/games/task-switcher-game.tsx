@@ -5,7 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Play, RotateCcw, Volume2, VolumeX, Trophy, Clock, Target, Zap, Brain, CheckCircle, Star } from "lucide-react"
+import {
+  Play,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Trophy,
+  Clock,
+  Target,
+  Zap,
+  Brain,
+  CheckCircle,
+  Star,
+  ArrowLeft,
+} from "lucide-react"
 import { useGameData } from "../../hooks/use-game-data"
 
 interface TaskRule {
@@ -110,7 +123,7 @@ const TASK_RULES: TaskRule[] = [
   },
 ]
 
-export function TaskSwitcherGame() {
+export function TaskSwitcherGame({ onBack }: { onBack?: () => void }) {
   const { updateGameData } = useGameData()
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [gameState, setGameState] = useState<GameState>({
@@ -465,6 +478,16 @@ export function TaskSwitcherGame() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-4">
+      {/* Back Button Header */}
+      {onBack && (
+        <div className="flex items-center gap-3 mb-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="p-2">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Task Switcher</h1>
+        </div>
+      )}
+
       {/* Header */}
       <Card>
         <CardHeader className="pb-4">
