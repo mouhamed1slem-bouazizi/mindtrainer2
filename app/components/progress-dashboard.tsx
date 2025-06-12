@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Loader2, RefreshCw, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { useFirestoreRealtime } from "@/app/hooks/use-firestore-realtime"
+import { useFirebaseData } from "@/app/hooks/use-firebase-data"
 import { OverviewTab } from "./progress/overview-tab"
 import { TrendsTab } from "./progress/trends-tab"
 import { GameStatsTab } from "./progress/game-stats-tab"
@@ -16,7 +16,7 @@ import { InsightsTab } from "./progress/insights-tab"
 
 export function ProgressDashboard() {
   const { user } = useAuth()
-  const { data, loading, error, retry } = useFirestoreRealtime(user?.uid || null)
+  const { data, processedData, loading, error, retry } = useFirebaseData()
   const [retryCount, setRetryCount] = useState(0)
 
   const handleRetry = async () => {
