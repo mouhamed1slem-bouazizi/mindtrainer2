@@ -19,6 +19,18 @@ export function AttentionGame({ onComplete, onBack, gameData }: AttentionGamePro
   const [timeLeft, setTimeLeft] = useState(30)
   const [correctClicks, setCorrectClicks] = useState(0)
   const [totalClicks, setTotalClicks] = useState(0)
+  const [gameStartTime, setGameStartTime] = useState<number>(0)
+  const [roundStartTime, setRoundStartTime] = useState<number>(0)
+  const [roundTimes, setRoundTimes] = useState<
+    Array<{ round: number; time: number; targets: number; accuracy: number }>
+  >([])
+  const [sessionMetrics, setSessionMetrics] = useState({
+    totalTargetsFound: 0,
+    totalDistractorsClicked: 0,
+    averageTimePerTarget: 0,
+    fastestRound: { round: 0, time: 0 },
+    slowestRound: { round: 0, time: 0 },
+  })
 
   const maxRounds = 3
   const itemsPerRound = 8
@@ -34,6 +46,7 @@ export function AttentionGame({ onComplete, onBack, gameData }: AttentionGamePro
       })
     }
     setTargets(newTargets)
+    setRoundStartTime(Date.now())
   }
 
   const handleItemClick = (item: any) => {
@@ -51,24 +64,94 @@ export function AttentionGame({ onComplete, onBack, gameData }: AttentionGamePro
       // Check if all targets found
       const remainingTargets = targets.filter((t) => t.isTarget && t.id !== item.id)
       if (remainingTargets.length === 0) {
+        // Round completed
+        const roundTime = Date.now() - roundStartTime
+        const targetsInRound = targets.filter((t) => t.isTarget).length
+        const roundAccuracy =
+          targetsInRound > 0 ? (targetsInRound / (newTotalClicks - totalClicks + targetsInRound)) * 100 : 0
+
+        const newRoundData = {
+          round: round,
+          time: roundTime,
+          targets: targetsInRound,
+          accuracy: roundAccuracy,
+        }
+
+        setRoundTimes((prev) => [...prev, newRoundData])
+
         if (round < maxRounds) {
           setRound(round + 1)
           setTimeout(() => generateTargets(), 1000)
         } else {
           // Game complete
-          const accuracy = (newCorrectClicks / newTotalClicks) * 100
-          onComplete(score + 10, {
-            accuracy,
-            correctClicks: newCorrectClicks,
-            totalClicks: newTotalClicks,
-            roundsCompleted: round,
-          })
+          completeGame(newCorrectClicks, newTotalClicks, [...roundTimes, newRoundData])
         }
       }
     } else {
       // Penalty for wrong click
       setScore(Math.max(0, score - 5))
     }
+  }
+
+  const completeGame = (finalCorrectClicks: number, finalTotalClicks: number, finalRoundTimes: any[]) => {
+    const totalGameTime = Date.now() - gameStartTime
+    const accuracy = finalTotalClicks > 0 ? (finalCorrectClicks / finalTotalClicks) * 100 : 0
+
+    // Calculate session metrics
+    const totalTargets = finalRoundTimes.reduce((sum, round) => sum + round.targets, 0)
+    const totalDistractors = finalTotalClicks - finalCorrectClicks
+    const averageTimePerTarget = totalTargets > 0 ? totalGameTime / totalTargets : 0
+
+    const fastestRound = finalRoundTimes.reduce(
+      (fastest, current) => (!fastest.time || current.time < fastest.time ? current : fastest),
+      { round: 0, time: 0 },
+    )
+
+    const slowestRound = finalRoundTimes.reduce(
+      (slowest, current) => (current.time > slowest.time ? current : slowest),
+      { round: 0, time: 0 },
+    )
+
+    const metrics = {
+      accuracy,
+      correctClicks: finalCorrectClicks,
+      totalClicks: finalTotalClicks,
+      roundsCompleted: round,
+      totalSessionTime: totalGameTime,
+      roundTimes: finalRoundTimes,
+      averageTimePerRound: finalRoundTimes.length > 0 ? totalGameTime / finalRoundTimes.length : 0,
+      averageTimePerTarget,
+      fastestRound,
+      slowestRound,
+      totalTargetsFound: totalTargets,
+      totalDistractorsClicked: totalDistractors,
+      consistencyScore: calculateConsistencyScore(finalRoundTimes),
+      focusEfficiency: calculateFocusEfficiency(finalCorrectClicks, finalTotalClicks, totalGameTime),
+    }
+
+    onComplete(score + 10, metrics)
+  }
+
+  const calculateConsistencyScore = (rounds: any[]) => {
+    if (rounds.length < 2) return 100
+
+    const times = rounds.map((r) => r.time)
+    const average = times.reduce((sum, time) => sum + time, 0) / times.length
+    const variance = times.reduce((sum, time) => sum + Math.pow(time - average, 2), 0) / times.length
+    const standardDeviation = Math.sqrt(variance)
+
+    // Lower standard deviation = higher consistency (scale 0-100)
+    return Math.max(0, 100 - (standardDeviation / average) * 100)
+  }
+
+  const calculateFocusEfficiency = (correct: number, total: number, time: number) => {
+    if (total === 0 || time === 0) return 0
+
+    const accuracy = correct / total
+    const speed = 1000 / (time / correct) // targets per second * 1000
+
+    // Combine accuracy and speed for efficiency score
+    return Math.min(100, (accuracy * 0.7 + speed * 0.3) * 100)
   }
 
   useEffect(() => {
@@ -78,12 +161,7 @@ export function AttentionGame({ onComplete, onBack, gameData }: AttentionGamePro
     } else if (timeLeft === 0) {
       // Time up
       const accuracy = totalClicks > 0 ? (correctClicks / totalClicks) * 100 : 0
-      onComplete(score, {
-        accuracy,
-        correctClicks,
-        totalClicks,
-        roundsCompleted: round - 1,
-      })
+      completeGame(correctClicks, totalClicks, roundTimes)
     }
   }, [gameState, timeLeft])
 
@@ -126,13 +204,22 @@ export function AttentionGame({ onComplete, onBack, gameData }: AttentionGamePro
             {gameData?.bestScore && (
               <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                 <p className="text-sm font-medium">Your Best Score: {gameData.bestScore}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Best Accuracy: {gameData.bestAccuracy}%</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Best Accuracy: {Math.round(gameData.accuracy || 0)}%
+                </p>
+                {gameData.fastestRound && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Fastest Round: {(gameData.fastestRound.time / 1000).toFixed(2)}s (Round{" "}
+                    {gameData.fastestRound.round})
+                  </p>
+                )}
               </div>
             )}
 
             <Button
               onClick={() => {
                 setGameState("playing")
+                setGameStartTime(Date.now())
                 generateTargets()
               }}
               className="w-full"

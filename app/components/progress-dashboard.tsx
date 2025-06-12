@@ -46,6 +46,8 @@ import { useAuth } from "@/contexts/auth-context"
 // First, add the imports for our new components at the top of the file
 import { MemoryMatrixStats } from "./game-stats/memory-matrix-stats"
 import { LightningReflexesStats } from "./game-stats/lightning-reflexes-stats"
+import { FocusFilterStats } from "./game-stats/focus-filter-stats"
+import { TaskSwitcherStats } from "./game-stats/task-switcher-stats"
 
 interface ProgressDashboardProps {
   gameData?: any
@@ -87,6 +89,11 @@ export function ProgressDashboard({
         timesPlayed: 0,
         accuracy: 0,
         history: [],
+      },
+      taskSwitcher: {
+        bestScore: 0,
+        timesPlayed: 0,
+        bestLevel: 0,
       },
     },
     userStats: {
@@ -542,7 +549,8 @@ export function ProgressDashboard({
     </Card>
   )
 
-  const FocusFilterStats = () => (
+  // Replace the existing FocusFilterStats function with:
+  const FocusFilterStatsSimple = () => (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -571,6 +579,41 @@ export function ProgressDashboard({
         {(gameData.attention?.timesPlayed || 0) === 0 && (
           <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg text-center">
             <p className="text-sm text-gray-500">Play Focus Filter to see detailed statistics!</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+
+  const TaskSwitcherStatsSimple = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Brain className="w-5 h-5 text-purple-500" />
+          Task Switcher Statistics
+        </CardTitle>
+        <CardDescription>Cognitive flexibility and task switching performance</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <Award className="w-4 h-4 text-purple-500" />
+              <span className="text-sm font-medium">Best Level</span>
+            </div>
+            <p className="text-xl font-bold text-purple-600">{gameData.taskSwitcher?.bestLevel || 0}</p>
+          </div>
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium">Times Played</span>
+            </div>
+            <p className="text-xl font-bold text-blue-600">{gameData.taskSwitcher?.timesPlayed || 0}</p>
+          </div>
+        </div>
+        {(gameData.taskSwitcher?.timesPlayed || 0) === 0 && (
+          <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg text-center">
+            <p className="text-sm text-gray-500">Play Task Switcher to see detailed statistics!</p>
           </div>
         )}
       </CardContent>
@@ -916,6 +959,13 @@ export function ProgressDashboard({
             >
               <Eye className="w-4 h-4 mr-1" /> Focus Filter
             </Button>
+            <Button
+              variant={selectedGame === "taskSwitcher" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedGame("taskSwitcher")}
+            >
+              <Brain className="w-4 h-4 mr-1" /> Task Switcher
+            </Button>
           </div>
 
           <div className="space-y-6">
@@ -939,7 +989,18 @@ export function ProgressDashboard({
               ) : (
                 <LightningReflexesStatsSimple />
               ))}
-            {(selectedGame === "all" || selectedGame === "attention") && <FocusFilterStats />}
+            {(selectedGame === "all" || selectedGame === "attention") &&
+              (selectedGame === "attention" ? (
+                <FocusFilterStats gameData={gameData.attention} />
+              ) : (
+                <FocusFilterStatsSimple />
+              ))}
+            {(selectedGame === "all" || selectedGame === "taskSwitcher") &&
+              (selectedGame === "taskSwitcher" ? (
+                <TaskSwitcherStats gameData={gameData.taskSwitcher} />
+              ) : (
+                <TaskSwitcherStatsSimple />
+              ))}
           </div>
         </TabsContent>
 
@@ -1074,6 +1135,27 @@ export function ProgressDashboard({
                     </div>
                     <div>
                       <p className="font-bold">{gameData.attention?.timesPlayed || 0}</p>
+                      <p className="text-gray-500">Times Played</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="w-5 h-5 text-purple-500" />
+                    <h3 className="font-medium">Task Switcher</h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="font-bold">{gameData.taskSwitcher?.bestLevel || 0}</p>
+                      <p className="text-gray-500">Best Level</p>
+                    </div>
+                    <div>
+                      <p className="font-bold">{gameData.taskSwitcher?.bestScore || 0}</p>
+                      <p className="text-gray-500">Best Score</p>
+                    </div>
+                    <div>
+                      <p className="font-bold">{gameData.taskSwitcher?.timesPlayed || 0}</p>
                       <p className="text-gray-500">Times Played</p>
                     </div>
                   </div>

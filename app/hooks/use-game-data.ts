@@ -306,6 +306,22 @@ export function useGameData() {
 
       if (gameId === "attention" && cleanedMetrics.accuracy) {
         // Attention game specific updates
+        const fastestRounds = [...(currentGame.fastestRounds || [])]
+
+        // Update fastest round if we have round times
+        if (cleanedMetrics.fastestRound) {
+          const existingFastestRound = fastestRounds.find((r) => r.round === cleanedMetrics.fastestRound.round)
+          if (!existingFastestRound || cleanedMetrics.fastestRound.time < existingFastestRound.time) {
+            const filteredRounds = fastestRounds.filter((r) => r.round !== cleanedMetrics.fastestRound.round)
+            filteredRounds.push({
+              round: cleanedMetrics.fastestRound.round,
+              time: cleanedMetrics.fastestRound.time,
+              date: sessionDate,
+            })
+            fastestRounds.splice(0, fastestRounds.length, ...filteredRounds.sort((a, b) => a.round - b.round))
+          }
+        }
+
         return {
           ...prev,
           [gameId]: {
@@ -315,6 +331,14 @@ export function useGameData() {
             accuracy: Math.max(currentGame.accuracy || 0, cleanedMetrics.accuracy),
             history: [...(currentGame.history || []), newHistoryEntry],
             lastPlayed: sessionDate,
+            fastestRound: cleanedMetrics.fastestRound || currentGame.fastestRound,
+            fastestRounds: fastestRounds,
+            averageTimePerTarget: cleanedMetrics.averageTimePerTarget || currentGame.averageTimePerTarget,
+            focusEfficiency: cleanedMetrics.focusEfficiency || currentGame.focusEfficiency,
+            consistencyScore: cleanedMetrics.consistencyScore || currentGame.consistencyScore,
+            totalTargetsFound: (currentGame.totalTargetsFound || 0) + (cleanedMetrics.totalTargetsFound || 0),
+            totalDistractorsClicked:
+              (currentGame.totalDistractorsClicked || 0) + (cleanedMetrics.totalDistractorsClicked || 0),
           },
         }
       }
