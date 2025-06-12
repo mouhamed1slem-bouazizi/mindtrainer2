@@ -107,13 +107,196 @@ export function ProgressDashboard({ gameData, userStats, isLoading }: ProgressDa
 
   return (
     <div className="space-y-6 pb-20">
-      <Tabs defaultValue="trends" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="games">Game Stats</TabsTrigger>
           <TabsTrigger value="domains">Domains</TabsTrigger>
           <TabsTrigger value="details">Game Details</TabsTrigger>
         </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  <span className="text-sm text-gray-500">Total Score</span>
+                </div>
+                <div className="text-2xl font-bold">{userStats.totalScore}</div>
+                <div className="text-sm text-green-600 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  +164%
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-5 h-5 text-purple-500" />
+                  <span className="text-sm text-gray-500">Day Streak</span>
+                </div>
+                <div className="text-2xl font-bold">1</div>
+                <div className="text-sm text-green-600 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  Active
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Game Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Game Distribution</CardTitle>
+              <CardDescription>Your training focus across different games</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Pie Chart Representation */}
+                <div className="relative w-48 h-48 mx-auto">
+                  <div
+                    className="w-full h-full rounded-full"
+                    style={{
+                      background: `conic-gradient(
+              #8b5cf6 0deg 180deg,
+              #10b981 180deg 230deg,
+              #f59e0b 230deg 280deg,
+              #f97316 280deg 360deg
+            )`,
+                    }}
+                  ></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-20 h-20 bg-white dark:bg-gray-900 rounded-full"></div>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    <span>TaskSwitcher 50%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span>Reaction 14%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span>Memory 14%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <span>Attention 22%</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Achievements */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Achievements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {userStats.avgReactionTime < 300 && (
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/40 rounded-full flex items-center justify-center">
+                        <Zap className="w-4 h-4 text-yellow-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Speed Demon</div>
+                        <div className="text-sm text-gray-500">
+                          Reaction time under 300ms ({userStats.avgReactionTime}ms)
+                        </div>
+                      </div>
+                    </div>
+                    <Badge className="bg-black text-white">New!</Badge>
+                  </div>
+                )}
+
+                {gameData.memory?.bestLevel > 20 && (
+                  <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center">
+                        <Brain className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Memory Master</div>
+                        <div className="text-sm text-gray-500">
+                          Reached level {gameData.memory.bestLevel} in Memory Matrix
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">Earned</Badge>
+                  </div>
+                )}
+
+                {gameData.attention?.accuracy > 95 && (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Focus Expert</div>
+                        <div className="text-sm text-gray-500">
+                          {Math.round(gameData.attention.accuracy)}% accuracy in Focus Filter
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">Earned</Badge>
+                  </div>
+                )}
+
+                {(!userStats.avgReactionTime || userStats.avgReactionTime >= 300) &&
+                  (!gameData.memory?.bestLevel || gameData.memory.bestLevel <= 20) &&
+                  (!gameData.attention?.accuracy || gameData.attention.accuracy <= 95) && (
+                    <div className="text-center text-gray-500 py-4">Complete more games to unlock achievements!</div>
+                  )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Training Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Training Summary</CardTitle>
+              <CardDescription>Your overall progress</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">
+                    {Object.values(gameData).reduce((total, game: any) => total + (game?.timesPlayed || 0), 0)}
+                  </div>
+                  <div className="text-sm text-gray-500">Sessions</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">5m</div>
+                  <div className="text-sm text-gray-500">Total Time</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">4</div>
+                  <div className="text-sm text-gray-500">Games Available</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">
+                    {Object.values(gameData).filter((game: any) => (game?.timesPlayed || 0) > 0).length}
+                  </div>
+                  <div className="text-sm text-gray-500">Games Tried</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-4">
